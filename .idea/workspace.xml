@@ -2,17 +2,8 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="f9040f09-047d-44c7-93f2-80c4e7b0df54" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/.gitignore" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/FDI/models/models.py" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/config/countries.txt" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/config/default.yaml" />
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/requirements.txt" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/model/__init__.py" afterPath="$PROJECT_DIR$/FDI/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/model/base.py" afterPath="$PROJECT_DIR$/FDI/models/__init__.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/model/models.py" afterPath="$PROJECT_DIR$/FDI/runme.py" />
-      <change type="MOVED" beforePath="$PROJECT_DIR$/model/utils.py" afterPath="$PROJECT_DIR$/FDI/models/utils.py" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.gitignore" afterPath="$PROJECT_DIR$/.gitignore" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/utils/load.py" afterPath="$PROJECT_DIR$/utils/load.py" />
     </list>
     <ignored path="PatentData2.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -65,6 +56,16 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
+      <file leaf-file-name=".gitignore" pinned="false" current-in-tab="true">
+        <entry file="file://$PROJECT_DIR$/.gitignore">
+          <provider selected="true" editor-type-id="text-editor">
+            <state relative-caret-position="977">
+              <caret line="94" column="15" selection-start-line="94" selection-start-column="15" selection-end-line="94" selection-end-column="15" />
+              <folding />
+            </state>
+          </provider>
+        </entry>
+      </file>
       <file leaf-file-name="models.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/FDI/models/models.py">
           <provider selected="true" editor-type-id="text-editor">
@@ -121,11 +122,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="utils.py" pinned="false" current-in-tab="true">
+      <file leaf-file-name="utils.py" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/FDI/models/utils.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="270">
-              <caret line="18" column="30" selection-start-line="18" selection-start-column="30" selection-end-line="18" selection-end-column="30" />
+            <state relative-caret-position="375">
+              <caret line="25" column="0" selection-start-line="25" selection-start-column="0" selection-end-line="25" selection-end-column="0" />
               <folding>
                 <element signature="e#0#30#0" expanded="true" />
               </folding>
@@ -173,7 +174,6 @@
         <option value="$PROJECT_DIR$/runme.py" />
         <option value="$PROJECT_DIR$/export.py" />
         <option value="$PROJECT_DIR$/bin/config.sh" />
-        <option value="$PROJECT_DIR$/.gitignore" />
         <option value="$PROJECT_DIR$/bin/default.yaml" />
         <option value="$PROJECT_DIR$/config/default.yaml" />
         <option value="$PROJECT_DIR$/utils/load.py" />
@@ -188,6 +188,7 @@
         <option value="$PROJECT_DIR$/FDI/models/models.py" />
         <option value="$PROJECT_DIR$/FDI/runme.py" />
         <option value="$PROJECT_DIR$/FDI/models/utils.py" />
+        <option value="$PROJECT_DIR$/.gitignore" />
       </list>
     </option>
   </component>
@@ -687,14 +688,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/.gitignore">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="1380">
-          <caret line="92" column="14" selection-start-line="92" selection-start-column="14" selection-end-line="92" selection-end-column="14" />
-          <folding />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/bin/default.yaml" />
     <entry file="file://$PROJECT_DIR$/config/default.yaml">
       <provider selected="true" editor-type-id="text-editor">
@@ -881,11 +874,19 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/FDI/models/utils.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="270">
-          <caret line="18" column="30" selection-start-line="18" selection-start-column="30" selection-end-line="18" selection-end-column="30" />
+        <state relative-caret-position="375">
+          <caret line="25" column="0" selection-start-line="25" selection-start-column="0" selection-end-line="25" selection-end-column="0" />
           <folding>
             <element signature="e#0#30#0" expanded="true" />
           </folding>
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/.gitignore">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="977">
+          <caret line="94" column="15" selection-start-line="94" selection-start-column="15" selection-end-line="94" selection-end-column="15" />
+          <folding />
         </state>
       </provider>
     </entry>

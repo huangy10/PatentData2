@@ -92,3 +92,4 @@ ENV/
 
 # user defined
 /.idea
+/FDI/db.sqlite3
