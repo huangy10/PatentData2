@@ -1,8 +1,12 @@
+import os
+
 from sqlalchemy import create_engine, Column, Integer, String, Float, ForeignKey, Boolean
 from sqlalchemy.ext.declarative import as_declarative, declared_attr, declarative_base
 import sqlalchemy.orm
 
-engine = create_engine('sqlite:///db.sqlite3', encoding="utf8", echo=False)
+
+engine = create_engine('sqlite:///{path}/db.sqlite3'.format(path=os.path.dirname(os.path.dirname(__file__)))
+                       , encoding="utf8", echo=False)
 
 
 Base = declarative_base()
@@ -38,6 +42,8 @@ class FDI(Base):
 
     value = Column(Float, default=0)
     year = Column(Integer, default=2000)
+
+    data_type = Column(String(20))
 
 
 DBSession = sqlalchemy.orm.sessionmaker(bind=engine)
