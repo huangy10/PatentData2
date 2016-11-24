@@ -6,11 +6,12 @@ from sqlalchemy.ext.declarative import as_declarative, declared_attr
 import sqlalchemy.orm
 
 engine = create_engine('sqlite:///{path}/db.sqlite3'.format(path=os.path.dirname(__file__)),
-    encoding='utf8', echo=True)
+                       encoding='utf8', echo=True)
 
 
 @as_declarative()
 class Base(object):
+
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     @declared_attr
@@ -18,10 +19,11 @@ class Base(object):
         return cls.__name__.lower()
 
 
-cite = Table(
+#
+citation = Table(
     "citation", Base.metadata,
-    Column("patent_id", Integer, ForeignKey("patent.id")),
-    Column("country_id", Integer, ForeignKey("country.id"))
+    Column("cite_id", Integer, ForeignKey("patent.id"), primary_key=True),
+    Column("cited_id", Integer, ForeignKey("patent.id"), primary_key=True)
 )
 
 
@@ -59,6 +61,26 @@ class Patent(Base):
     # valid, applying, invalid
     status = Column(String(10))
 
-    country_id = Column(Integer, ForeignKey("country.id"))
-    country = sqlalchemy.orm.relationship("country", foreign_keys="patent.country_id", backref="patents")
+    #
+    flag = Column(Boolean, default=True)
 
+    country_id = Column(Integer, ForeignKey("country.id"))
+    country = sqlalchemy.orm.relationship(
+        "Country", backref="patents"
+    )
+
+Patent.cited_patents = sqlalchemy.orm.relationship(
+    "Patent", backref="cited_by", secondary=citation,
+    primaryjoin=(Patent.id == citation.c.cite_id),
+    secondaryjoin=(Patent.id == citation.c.cited_id)
+)
+
+
+DBSession = sqlalchemy.orm.sessionmaker(bind=engine)
+
+
+def new_session():
+    return DBSession()
+
+
+Base.metadata.create_all(engine)
