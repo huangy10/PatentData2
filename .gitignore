@@ -94,3 +94,4 @@ ENV/
 /.idea
 /FDI/db.sqlite3
 /output
+/Patent/account.yaml
