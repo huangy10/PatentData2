@@ -31,9 +31,16 @@ class SearchResultParser(WebpageParser):
 class DetailResultParser(WebpageParser):
 
     def analyze(self):
-        res = self.soup
 
         def patent_builder(patent):
-            pass
+            patent.name = self.soup.find("span", {"class": "detailtitle"}).h1.string
+            patent.abstract = self.soup.find("span", {"id": "abs_"}).string[0:250]
+            patent.p_id = self.soup.find("table", {"id": "PatentContentTable"})\
+                .find_all("td", {"class": "r"})[1].string.strip()
 
         return patent_builder
+
+    def cited_patents(self):
+        table = self.soup.find_all("table", {"id": "PatentContentTable"})[1]
+        links = table.find_all("a")
+        return map(lambda x: x.attrs["href"], links)

@@ -41,6 +41,7 @@ class Patent(Base):
 
     # 专利id
     p_id = Column(String(100), unique=True)
+    apply_id = Column(String(100), unique=True)
 
     # url id
     url_id = Column(String(100), unique=True)
@@ -51,13 +52,12 @@ class Patent(Base):
     # 类别
     category = Column(String(20))
 
-    # 申请人
+    # 申请人,暂时不用
     applier = Column(String(250))
     # FM: 发明, SY: 实用, WG: 外观
     type = Column(String(5))
     # valid, applying, invalid
     status = Column(String(10))
-
 
     country_id = Column(Integer, ForeignKey("country.id"))
     country = sqlalchemy.orm.relationship("country", foreign_keys="patent.country_id", backref="patents")
