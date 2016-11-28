@@ -64,6 +64,8 @@ class Patent(Base):
     #
     flag = Column(Boolean, default=True)
 
+    reference_only = Column(Boolean, default=True)
+
     country_id = Column(Integer, ForeignKey("country.id"))
     country = sqlalchemy.orm.relationship(
         "Country", backref="patents"
