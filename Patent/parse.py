@@ -45,7 +45,7 @@ class DetailResultParser(WebpageParser):
     def cited_patents(self):
         tables = self.soup.find_all("table", {"id": "PatentContentTable"})
         for table in tables:
-            if u"引用了" in table.previous_sibling.span.string:
+            if u"引用了" in table.previous_sibling.previous_sibling.span.string:
                 links = table.find_all("a")
                 return map(lambda x: x.attrs["href"], links)
         return []

@@ -107,7 +107,7 @@ class DetailWorker(Worker):
         self.id = i
         self.search_done = False
         self.client = httpclient.AsyncHTTPClient()
-        self.session=session
+        self.session = session
         super(DetailWorker, self).__init__()
 
     @property
