@@ -27,20 +27,30 @@ class SearchResultParser(WebpageParser):
             return None
         return map(lambda x: x.attrs["href"], res)
 
+    def reach_end(self):
+        res = self.soup.find("div", {"class": "ErrorBlock"})
+        if res is not None:
+            return True
+        else:
+            return False
+
+
 
 class DetailResultParser(WebpageParser):
 
     apply_year_pattern = re.compile(r"(\d{4})-\d\d-\d\d")
 
-    def debug(self):
+    def debug(self, name):
+        print "%s~~~~~~~" % name
         print self.get_apply_year()
         print self.get_p_id()
+        print "~~~~~~~"
 
     def analyze(self):
 
         def patent_builder(patent):
             patent.name = self.get_patent_name()
-            patent.abstract = self.get_patent_abstract()
+            # patent.abstract = self.get_patent_abstract()
             patent.p_id = self.get_p_id()
             patent.apply_year = self.get_apply_year()
             patent.url_id = self.get_url_id()

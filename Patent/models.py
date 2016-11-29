@@ -6,7 +6,7 @@ from sqlalchemy.ext.declarative import as_declarative, declared_attr
 import sqlalchemy.orm
 
 engine = create_engine('sqlite:///{path}/db.sqlite3'.format(path=os.path.dirname(__file__)),
-                       encoding='utf8', echo=True)
+                       encoding='utf8', echo=False)
 
 
 @as_declarative()

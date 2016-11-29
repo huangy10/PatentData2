@@ -4,6 +4,8 @@ from models import *
 
 
 def load_country_code(session=new_session()):
+    if session.query(Country).count() > 0:
+        return
     path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "data", "country_code.xlsx")
     book = xlrd.open_workbook(path)
     sheet = book.sheets()[0]

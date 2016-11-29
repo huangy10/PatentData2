@@ -5,6 +5,8 @@ from tornado import gen, ioloop
 
 from auth import login
 from workers import SearchWorker
+from models import new_session, Country
+from load_country_code import load_country_code
 
 domain = "http://global.soopat.com"
 url_template = "http://global.soopat.com/Patent/Result?" \
@@ -26,7 +28,10 @@ def crawler_start():
     #     with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), "log.html"), "w") as f:
     #         f.write(res.content)
     # return res
-    searcher = SearchWorker(name="default", countries=["CN"])
+    load_country_code()
+    session = new_session()
+    countries = session.query(Country).all()
+    searcher = SearchWorker(name="default", countries=countries, session=session)
     yield searcher.go()
     print "搜索完成"
 
