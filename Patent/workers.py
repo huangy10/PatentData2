@@ -16,10 +16,11 @@ class Worker(object):
 
 
 class DetailTask(object):
-    def __init__(self, country, r_url):
+    def __init__(self, country, r_url, retries=0):
         self.country = country
         self.r_url = r_url
         self.cite_by = None
+        self.retries = retries
         super(DetailTask, self).__init__()
 
 
@@ -47,6 +48,7 @@ class SearchWorker(Worker):
         self.client = httpclient.AsyncHTTPClient()
         self.search_done = False
         self.cookies_update_lock = locks.Lock()
+        self.countries_cache = {}
         workers = []
         # 平均下来一个页面中会返回10个详情,我们创建10个detail worker能够保持队列大概持平
         for i in range(10):
@@ -74,6 +76,8 @@ class SearchWorker(Worker):
         start_date = datetime(year=2001, month=1, day=1)
         end_date = datetime(year=2014, month=12, day=31)
         day_count = (end_date - start_date).days + 1
+        for country in self.countries:
+            self.countries_cache[country.code] = country
         for country in self.countries:
             for single_day in [d for d in (start_date + timedelta(n) for n in range(day_count)) if d <= end_date]:
                 yield self.search_country(country, single_day.strftime("%Y%m%d"))
@@ -176,7 +180,7 @@ class DetailWorker(Worker):
             task = yield self.queue.get()
             if task is None:
                 continue
-            print u"%s 开始爬取 %s" % (self.name, task.r_url)
+            print u"%s 开始爬取 %s[%s]" % (self.name, task.r_url, task.retries)
             country = task.country
             url = self.make_url(task.r_url)
 
@@ -189,7 +193,8 @@ class DetailWorker(Worker):
             if res.code != 200:
                 print u"%s 获取 %s 失败, 错误码为 %s" % (self.name, task.r_url, res.code)
                 # 如果失败了重新加入队列,并且将这个worker睡眠五秒钟
-                yield self.queue.put(task)
+                task.retries += 1
+                yield self.queue.put(task.retries)
                 yield gen.sleep(5)
                 continue
             parser = DetailResultParser(
@@ -241,15 +246,15 @@ class DetailWorker(Worker):
             parser.analyze()(p)
             country_code = parser.get_country()
             try:
-                p.country = new_session().query(Country).filter_by(code=country_code).one()
+                p.country = self.search.countries_cache[country_code]
             except Exception as e:
-                print country_code
+                print country_code, url
                 raise e
 
         patent.cited_patents.append(p)
         if created:
             self.session.add(p)
-        p.debug(self.name)
+        parser.debug(self.name)
         self.session.commit()
 
     # def check_patent_exists(self, patent):
