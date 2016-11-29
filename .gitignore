@@ -96,3 +96,5 @@ ENV/
 /Patent/account.yaml
 
 *.sqlite3
+*.html
+cookies.txt
