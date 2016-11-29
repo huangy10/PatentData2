@@ -1,3 +1,4 @@
+# coding=utf-8
 import os
 import requests
 from tornado import gen, ioloop
@@ -27,6 +28,7 @@ def crawler_start():
     # return res
     searcher = SearchWorker(name="default", countries=["CN"])
     yield searcher.go()
+    print "搜索完成"
 
 
 if __name__ == '__main__':

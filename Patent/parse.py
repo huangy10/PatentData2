@@ -32,6 +32,10 @@ class DetailResultParser(WebpageParser):
 
     apply_year_pattern = re.compile(r"(\d{4})-\d\d-\d\d")
 
+    def debug(self):
+        print self.get_apply_year()
+        print self.get_p_id()
+
     def analyze(self):
 
         def patent_builder(patent):
