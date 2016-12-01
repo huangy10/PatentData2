@@ -53,7 +53,7 @@ class DetailResultParser(WebpageParser):
             # patent.abstract = self.get_patent_abstract()
             patent.p_id = self.get_p_id()
             patent.apply_year = self.get_apply_year()
-            patent.url_id = self.get_url_id()
+            # patent.url_id = self.get_url_id()
         return patent_builder
 
     def cited_patents(self):

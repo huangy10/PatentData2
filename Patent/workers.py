@@ -126,12 +126,14 @@ class SearchWorker(Worker):
             index += fetch_count
             for p in patents:
                 yield self.queue.put(DetailTask(country, p))
-            print u"====================================================================%s" % (self.total_index + index)
+            print u"====================================================================" \
+                  u"(%s-%s)===%s" % (country.code, date, self.total_index + index)
             if fetch_count < 10:
                 if fetch_count == 0 and not parser.reach_end():
+                    self.write_log_file(res.body)
                     raise ValueError
                 break
-            yield gen.sleep(3)
+            # yield gen.sleep(3)
 
         self.total_index += index
 
@@ -216,7 +218,7 @@ class DetailWorker(Worker):
                 continue
             parser = DetailResultParser(
                 content=res.body, url=url)
-            p, created = self.get_or_create_patent(parser.get_url_id())
+            p, created = self.get_or_create_patent(parser.get_p_id())
             p.country = country
             if created:
                 try:
@@ -238,8 +240,9 @@ class DetailWorker(Worker):
                 print u"======%s 发现了%s条引用数据" % (self.name, len(citations))
                 for url in citations:
                     # 我们来同步的将本页面下的引用的专利加进来
-                    url_id = url.split("/")[-1]
-                    if self.patent_exists(url_id):
+                    # 从详情页面拿到的引用链接中最后编号是p_id
+                    p_id = url.split("/")[-1]
+                    if self.patent_exists(p_id):
                         continue
                     yield self.fetch_citation(url, patent=p)
             print u"%s 完成爬取 %s[%s]" % (self.name, task.r_url, task.retries)
@@ -284,7 +287,7 @@ class DetailWorker(Worker):
         if country_code not in self.search.countries_cache:
             print country_code
             return
-        p, created = self.get_or_create_patent(parser.get_url_id())
+        p, created = self.get_or_create_patent(parser.get_p_id())
 
         if created:
             parser.analyze()(p)
@@ -306,15 +309,15 @@ class DetailWorker(Worker):
         parser.debug(self.name)
         self.session.commit()
 
-    def get_or_create_patent(self, url_id):
+    def get_or_create_patent(self, p_id):
         session = self.session
-        patent = session.query(Patent).filter_by(sqlalchemy.or_(url_id=url_id, p_id=url_id)).first()
+        patent = session.query(Patent).filter_by(p_id=p_id).first()
         if patent:
             return patent, False
         else:
             return Patent(), True
 
-    def patent_exists(self, url_id):
+    def patent_exists(self, p_id):
         session = self.session
-        return session.query(Patent).filter_by(sqlalchemy.or_(url_id=url_id, p_id=url_id)).first() is not None
+        return session.query(Patent).filter_by(p_id=p_id).first() is not None
 
