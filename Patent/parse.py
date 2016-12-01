@@ -35,16 +35,16 @@ class SearchResultParser(WebpageParser):
             return False
 
 
-
 class DetailResultParser(WebpageParser):
 
     apply_year_pattern = re.compile(r"(\d{4})-\d\d-\d\d")
 
     def debug(self, name):
-        print "%s~~~~~~~" % name
-        print self.get_apply_year()
-        print self.get_p_id()
-        print "~~~~~~~"
+        # print "%s~~~~~~~" % name
+        # print self.get_apply_year()
+        # print self.get_p_id()
+        # print "~~~~~~~"
+        pass
 
     def analyze(self):
 
@@ -59,7 +59,7 @@ class DetailResultParser(WebpageParser):
     def cited_patents(self):
         tables = self.soup.find_all("table", {"id": "PatentContentTable"})
         for table in tables:
-            if u"引用了" in table.previous_sibling.previous_sibling.span.string:
+            if u"所引用" in table.previous_sibling.previous_sibling.span.string:
                 links = table.find_all("a")
                 return map(lambda x: x.attrs["href"], links)
         return []

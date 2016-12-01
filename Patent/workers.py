@@ -1,5 +1,5 @@
 # coding=utf-8
-from tornado import gen, queues, httpclient, locks
+from tornado import gen, queues, httpclient, locks, ioloop
 from datetime import datetime, timedelta
 
 from auth import login
@@ -13,6 +13,17 @@ class Worker(object):
     @gen.coroutine
     def go(self):
         raise NotImplementedError
+
+    def write_log_file(self, content):
+        if content is not None:
+            with open("log.html", "w") as f:
+                f.write(content)
+
+    def come_to_validate_image(self, soup):
+        res = soup.find("img", {"src": "/Patent/ValidateImage"}) is not None
+        if res:
+            print "+++++++++++++++++++WARNING+++++++++++++++++++++++"
+        return res
 
 
 class DetailTask(object):
@@ -48,7 +59,10 @@ class SearchWorker(Worker):
         self.client = httpclient.AsyncHTTPClient()
         self.search_done = False
         self.cookies_update_lock = locks.Lock()
+        self.cookies_updating = False
         self.countries_cache = {}
+
+        self.total_index = 0
         workers = []
         # 平均下来一个页面中会返回10个详情,我们创建10个detail worker能够保持队列大概持平
         for i in range(10):
@@ -66,7 +80,7 @@ class SearchWorker(Worker):
     def go(self):
         print u"%s 爬虫启动" % self.name
         print u"%s 开始登录到soopat引擎" % self.name
-        self.update_cookies(True)
+        self.update_cookies()
         print u"%s 获取到Cookie: %s" % (self.name, self.cookies)
         print u"%s 启动子爬虫" % self.name
 
@@ -99,10 +113,11 @@ class SearchWorker(Worker):
             )
             res = yield self.client.fetch(req, raise_error=False)
             if res.code != 200:
-                print url
-                with open("log.html", "w") as f:
-                    f.write(res.body)
+                if res.body is not None:
+                    with open("log.html", "w") as f:
+                        f.write(res.body)
                 print u"%s 搜索 %s: %s 时遇到错误, 错误码为 %s" % (self.name, country.code, index, res.code)
+                # yield self.update_cookies()
                 yield gen.sleep(5)
                 continue
             parser = SearchResultParser(res.body, url)
@@ -111,19 +126,21 @@ class SearchWorker(Worker):
             index += fetch_count
             for p in patents:
                 yield self.queue.put(DetailTask(country, p))
-            print u"===============================%s" % index
+            print u"====================================================================%s" % (self.total_index + index)
             if fetch_count < 10:
                 if fetch_count == 0 and not parser.reach_end():
                     raise ValueError
                 break
-            yield gen.sleep(10)
+            yield gen.sleep(3)
+
+        self.total_index += index
 
     @gen.coroutine
-    def update_cookies(self, init=False):
+    def update_cookies(self):
         try:
             with (yield self.cookies_update_lock.acquire(1)):
-                if not init:
-                    yield gen.sleep(10)
+                # if self.cookies_updating:
+                #     return
                 if self.cookies is None:
                     try:
                         with open("cookies.txt") as f:
@@ -194,7 +211,7 @@ class DetailWorker(Worker):
                 print u"%s 获取 %s 失败, 错误码为 %s" % (self.name, task.r_url, res.code)
                 # 如果失败了重新加入队列,并且将这个worker睡眠五秒钟
                 task.retries += 1
-                yield self.queue.put(task.retries)
+                yield self.queue.put(task)
                 yield gen.sleep(5)
                 continue
             parser = DetailResultParser(
@@ -202,19 +219,30 @@ class DetailWorker(Worker):
             p, created = self.get_or_create_patent(parser.get_url_id())
             p.country = country
             if created:
-                parser.analyze()(p)
+                try:
+                    parser.analyze()(p)
+                except AttributeError as e:
+                    if self.come_to_validate_image(parser.soup):
+                        yield gen.sleep(60)
+                        yield self.queue.put(task)
+                        continue
+                    self.write_log_file(parser.soup.prettify("utf8"))
+                    ioloop.IOLoop.current().stop()
+                    raise e
                 self.session.add(p)
             parser.debug(self.name)
             self.session.commit()
 
             citations = parser.cited_patents()
             if len(citations) > 0:
-                print u"======%s 发现了引用数据" % self.name
+                print u"======%s 发现了%s条引用数据" % (self.name, len(citations))
                 for url in citations:
                     # 我们来同步的将本页面下的引用的专利加进来
+                    url_id = url.split("/")[-1]
+                    if self.patent_exists(url_id):
+                        continue
                     yield self.fetch_citation(url, patent=p)
-                print u"======"
-
+            print u"%s 完成爬取 %s[%s]" % (self.name, task.r_url, task.retries)
             self.queue.task_done()
 
     @gen.coroutine
@@ -232,6 +260,9 @@ class DetailWorker(Worker):
         )
         res = yield self.client.fetch(req, raise_error=False)
         if res.code != 200:
+            if res.code == 302:
+                print u"%s 无法打开专利%s" % (self.name, url)
+                return
             if retries >= 5:
                 return
             print u"%s 获取引用数据%s失败, 睡眠五秒钟" % (self.name, url)
@@ -240,35 +271,50 @@ class DetailWorker(Worker):
             return
 
         parser = DetailResultParser(content=res.body, url=url)
+        try:
+            country_code = parser.get_country()
+        except AttributeError as e:
+            if self.come_to_validate_image(parser.soup):
+                yield gen.sleep(60)
+                yield self.fetch_citation(url, patent, retries)
+                return
+            self.write_log_file(parser.soup.prettify("utf8"))
+            ioloop.IOLoop.current().stop()
+            raise e
+        if country_code not in self.search.countries_cache:
+            print country_code
+            return
         p, created = self.get_or_create_patent(parser.get_url_id())
 
         if created:
             parser.analyze()(p)
-            country_code = parser.get_country()
+
+            if country_code is None:
+                print u"%s 无法确认%s的作者国别" % (self.name, url)
+                return
             try:
                 p.country = self.search.countries_cache[country_code]
+            except KeyError:
+                return
             except Exception as e:
                 print country_code, url
                 raise e
 
-        patent.cited_patents.append(p)
+        p.cited_patents.append(patent)
         if created:
             self.session.add(p)
         parser.debug(self.name)
         self.session.commit()
 
-    # def check_patent_exists(self, patent):
-    #     session = self.session
-    #     if session.query(Patent).filter_by(p_id=patent.p_id).first() is not None:
-    #         return False
-    #     else:
-    #         return True
-
     def get_or_create_patent(self, url_id):
         session = self.session
-        patent = session.query(Patent).filter_by(url_id=url_id).first()
+        patent = session.query(Patent).filter_by(sqlalchemy.or_(url_id=url_id, p_id=url_id)).first()
         if patent:
             return patent, False
         else:
             return Patent(), True
+
+    def patent_exists(self, url_id):
+        session = self.session
+        return session.query(Patent).filter_by(sqlalchemy.or_(url_id=url_id, p_id=url_id)).first() is not None
 
