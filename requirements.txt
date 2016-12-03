@@ -1,5 +1,5 @@
 tornado
-beautifulsoup4==4.3.2
+beautifulsoup4
 xlwt
 xlrd==0.9.3
 sqlalchemy==1.1.4
