@@ -1,5 +1,5 @@
 import re
-from Patent.parse import WebpageParser
+from Patent.parse import WebpageParser, BeautifulSoup
 
 
 class IndexParser(WebpageParser):
@@ -21,6 +21,16 @@ class IndexParser(WebpageParser):
         return res
 
 
+    def single_link(self):
+        title = self.soup.title
+        if title.get_text() != "Single Document":
+            return None
+        meta = self.soup.meta
+        if meta is None:
+            return meta
+        return meta["content"].replace("1;URL=", "")
+
+
 class DetailParser(WebpageParser):
 
     def __init__(self, content, url):
@@ -31,6 +41,7 @@ class DetailParser(WebpageParser):
 
         def builder(patent):
             patent.apply_year = self.get_apply_year()
+            patent.p_id = self.get_patent_number()
             if patent.name is None:
                 patent.name = self.get_name()
 
@@ -54,10 +65,13 @@ class DetailParser(WebpageParser):
         return self.soup.find("font", size="+1").get_text()
 
     def get_citation_link(self):
-        return self.soup.find("a", string="[Referenced By]")["href"]
+        a = self.soup.find("a", string="[Referenced By]")
+        if a is None:
+            return None
+        return a["href"]
 
     def get_patent_number(self):
-        table = self.soup.find("table")[2]
+        table = self.soup.find_all("table")[2]
         return table.find_all("td")[1].get_text().strip()
 
 
