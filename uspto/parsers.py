@@ -41,7 +41,8 @@ class DetailParser(WebpageParser):
 
     def __init__(self, content, url):
         super(DetailParser, self).__init__(content, url)
-        self.country_code_pattern = re.compile(r", (\w\w)\)")
+        self.country_code_patterns = [re.compile(r", \s?(\w\w)\)"), re.compile(r"\((\w\w)\)")]
+        self.states = []
 
     def analyze(self):
 
@@ -54,13 +55,16 @@ class DetailParser(WebpageParser):
         return builder
 
     def get_country_code(self):
-        header = self.soup.find("th", string=re.compile(r"Inventors:\s*"))
-        data = header.find_next_sibling("td")
-        result = re.search(self.country_code_pattern, data.get_text()).groups()
-        if len(result) > 0:
-            return result[0]
-        else:
-            return None
+        header = self.soup.find("th", string=re.compile(r"Assignee:\s*"))
+        data = header.parent
+        for pattern in self.country_code_patterns:
+            result = re.search(pattern, data.get_text())
+            if result is None:
+                continue
+            result = result.groups()
+            if len(result) > 0:
+                return result[0]
+        return None
 
     def get_apply_year(self):
         header = self.soup.find("th", string=re.compile(r"^Filed:\s*"))

@@ -189,7 +189,11 @@ class DetailWorker(Worker):
                 yield gen.sleep(5)
                 continue
             parser = DetailParser(res.body, task.req.url)
-            country_code = parser.get_country_code()
+            try:
+                country_code = parser.get_country_code()
+            except Exception as e:
+                print task.req.url
+                raise e
             try:
                 country = self.country_cache[country_code]
             except KeyError:
