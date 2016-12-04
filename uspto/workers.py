@@ -100,7 +100,7 @@ class IndexWorker(Worker):
         super(IndexWorker, self).__init__()
 
         # main task queue
-        self.queue = queues.Queue()
+        self.queue = queues.Queue(maxsize=1000)
         # fetch client
         self.client = httpclient.AsyncHTTPClient()
 
@@ -118,6 +118,7 @@ class IndexWorker(Worker):
         for w in self.workers:
             w.go()
         while True:
+            # 控制一下
             url = self.url_maker.next()
             if url is None:
                 break
@@ -125,8 +126,6 @@ class IndexWorker(Worker):
             req = httpclient.HTTPRequest(url, request_timeout=1000)
             count = yield self.fetch_url(req)
             self.url_maker.move_to_next_country = count < 50
-
-            yield gen.sleep(10000)
         self.done = True
 
     @gen.coroutine
