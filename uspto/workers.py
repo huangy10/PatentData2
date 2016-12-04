@@ -64,7 +64,7 @@ class IndexURLMaker(object):
             "p": page,
             "f": "S",
             "l": "50",
-            "Query": "ACN/%s AND APD/20010101->20041231" % country,
+            "Query": "ACN/%s AND APD/20010101->20141231" % country,
             "d": "PTXT"
         }
         url = "{domain}/netacgi/nph-Parser?{query}".format(
@@ -123,7 +123,7 @@ class IndexWorker(Worker):
             if url is None:
                 break
             print u"===========%s - %s" % (self.name, url)
-            req = httpclient.HTTPRequest(url, request_timeout=1000)
+            req = httpclient.HTTPRequest(url, request_timeout=1000, connect_timeout=1000)
             count = yield self.fetch_url(req)
             self.url_maker.move_to_next_country = count < 50
         self.done = True
@@ -133,7 +133,7 @@ class IndexWorker(Worker):
         while True:
             res = yield self.client.fetch(url, raise_error=False)
             if res.code != 200:
-                print u"===========%s - retry - %s" % (self.name, url)
+                print u"===========%s - retry - %s" % (self.name, url.url)
                 yield gen.sleep(10)
                 continue
             parser = IndexParser(res.body, url)
@@ -141,7 +141,8 @@ class IndexWorker(Worker):
             for p in patents:
                 new_task = Task(
                     httpclient.HTTPRequest(self.pre_process_url(p[2]),
-                                           request_timeout=1000),
+                                           request_timeout=1000,
+                                           connect_timeout=1000),
                     "detail", None
                 )
                 yield self.queue.put(new_task)
@@ -183,7 +184,7 @@ class DetailWorker(Worker):
         while True:
             res = yield self.client.fetch(task.req, raise_error=False)
             if res.code != 200:
-                print u"%s retry" % self.name
+                print u"%s detail retry %s:%s" % (self.name, res.code, res.error)
                 task.retries += 1
                 yield gen.sleep(5)
                 continue
@@ -192,6 +193,7 @@ class DetailWorker(Worker):
             try:
                 country = self.country_cache[country_code]
             except KeyError:
+                print u"%s drop detail from country: %s" % (self.name, country_code)
                 break
             p_id = parser.get_patent_number()
             patent, created = self.get_or_create_patent(p_id)
@@ -207,7 +209,8 @@ class DetailWorker(Worker):
             if link is None:
                 break
             link = self.pre_process_url(link)
-            new_task = Task(httpclient.HTTPRequest(link, request_timeout=1000), "citation", patent)
+            new_task = Task(httpclient.HTTPRequest(link, request_timeout=1000, connect_timeout=1000),
+                            "citation", patent)
             yield self.queue.put(new_task)
             break
 
@@ -216,7 +219,7 @@ class DetailWorker(Worker):
         while True:
             res = yield self.client.fetch(task.req, raise_error=False)
             if res.code != 200:
-                print u"%s retry" % self.name
+                print u"%s citation retry %s:%s" % (self.name, res.code, res.error)
                 task.retries += 1
                 yield gen.sleep(5)
                 continue
@@ -227,14 +230,16 @@ class DetailWorker(Worker):
                 link = parser.single_link()
                 if link is not None:
                     link = self.pre_process_url(link)
-                    new_task = Task(httpclient.HTTPRequest(link, request_timeout=1000), "detail", task.patent)
+                    new_task = Task(httpclient.HTTPRequest(link, request_timeout=1000, connect_timeout=1000),
+                                    "detail", task.patent)
                     yield self.queue.put(new_task)
                 break
             else:
                 print u"%s find %s citation data" % (self.name, len(links))
             for link in links:
                 link = self.pre_process_url(link[2])
-                new_task = Task(httpclient.HTTPRequest(link, request_timeout=1000), "detail", task.patent)
+                new_task = Task(httpclient.HTTPRequest(link, request_timeout=1000, connect_timeout=1000),
+                                "detail", task.patent)
                 yield self.queue.put(new_task)
 
             # try to get link of next page
@@ -242,7 +247,7 @@ class DetailWorker(Worker):
             if next_list is None:
                 break
             task.req = httpclient.HTTPRequest(
-                self.pre_process_url(next_list), request_timeout=1000
+                self.pre_process_url(next_list), request_timeout=1000, connect_timeout=1000
             )
             task.retries = 0
             print u"%s go to next citation page" % self.name
