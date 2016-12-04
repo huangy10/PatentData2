@@ -20,7 +20,6 @@ class IndexParser(WebpageParser):
             res.append((no, title, link))
         return res
 
-
     def single_link(self):
         title = self.soup.title
         if title.get_text() != "Single Document":
@@ -29,6 +28,13 @@ class IndexParser(WebpageParser):
         if meta is None:
             return meta
         return meta["content"].replace("1;URL=", "")
+
+    def get_next_page_link(self):
+        btn = self.soup.find("img", alt="[NEXT_LIST]")
+        if btn is None:
+            return None
+        else:
+            return btn.parent["href"]
 
 
 class DetailParser(WebpageParser):

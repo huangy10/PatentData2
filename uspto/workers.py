@@ -64,7 +64,7 @@ class IndexURLMaker(object):
             "p": page,
             "f": "S",
             "l": "50",
-            "Query": "ACN/%s AND APD/20010101->20141231" % country,
+            "Query": "ACN/%s AND APD/20010101->20041231" % country,
             "d": "PTXT"
         }
         url = "{domain}/netacgi/nph-Parser?{query}".format(
@@ -224,17 +224,29 @@ class DetailWorker(Worker):
             parser = IndexParser(res.body, task.req.url)
             links = parser.analyze()
             if len(links) == 0:
+                # try to get single document page
                 link = parser.single_link()
                 if link is not None:
                     link = self.pre_process_url(link)
                     new_task = Task(httpclient.HTTPRequest(link, request_timeout=1000), "detail", task.patent)
                     yield self.queue.put(new_task)
                 break
+            else:
+                print u"%s find %s citation data" % (self.name, len(links))
             for link in links:
-                link = self.pre_process_url(link)
+                link = self.pre_process_url(link[2])
                 new_task = Task(httpclient.HTTPRequest(link, request_timeout=1000), "detail", task.patent)
                 yield self.queue.put(new_task)
-            break
+
+            # try to get link of next page
+            next_list = parser.get_next_page_link()
+            if next_list is None:
+                break
+            task.req = httpclient.HTTPRequest(
+                self.pre_process_url(next_list), request_timeout=1000
+            )
+            task.retries = 0
+            print u"%s go to next citation page" % self.name
 
     def get_or_create_patent(self, p_id):
         session = self.session
