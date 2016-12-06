@@ -1,0 +1,36 @@
+version: 1
+disable_existing_loggers: true
+formatters:
+    default:
+        format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    simple:
+        format: '%(asctime)s - %(name)s(%(levelname)s): %(message)s'
+handlers:
+    console:
+        class: logging.StreamHandler
+        level: DEBUG
+        formatter: default
+        stream: ext://sys.stdout
+    warning:
+        class: logging.handlers.RotatingFileHandler
+        filename: uspto/logs/warnings.log
+        maxBytes: 123289600
+        backupCount: 10
+        formatter: simple
+        level: WARNING
+    error:
+        class: logging.handlers.RotatingFileHandler
+        filename: uspto/logs/errors.log
+        maxBytes: 123289600
+        backupCount: 10
+        formatter: simple
+        level: ERROR
+loggers:
+    default:
+        level: DEBUG
+        handlers: [error, warning, console]
+        propagate: no
+root:
+    level: DEBUG
+    handlers: [error, warning, console]
+    propagate: yes

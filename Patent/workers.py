@@ -35,6 +35,13 @@ class DetailTask(object):
         super(DetailTask, self).__init__()
 
 
+class StatsWorker(Worker):
+
+    @gen.coroutine
+    def go(self):
+        yield gen.sleep(60)
+
+
 class SearchWorker(Worker):
     url_template = u"http://global.soopat.com/Patent/Result?" \
                    u"SearchWord=SQR%3A(%20{country_code}%20)%20SQRQ%3A(%20{date}%20)%20&" \
