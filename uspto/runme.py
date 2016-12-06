@@ -11,6 +11,9 @@ from Patent.load_country_code import load_country_code
 from Patent.models import *
 from workers import IndexWorker, IndexURLMaker
 
+
+index_num = 1
+
 @gen.coroutine
 def start_crawler():
     load_country_code()
@@ -18,7 +21,7 @@ def start_crawler():
     countries = session.query(Country).all()
     url_maker = IndexURLMaker(countries=countries)
     futures = []
-    for i in range(1):
+    for i in range(index_num):
         worker = IndexWorker(name="default-%s" % i, url_maker=url_maker, session=session)
         futures.append(worker.go())
     # yield gen.sleep(10000)
@@ -26,4 +29,8 @@ def start_crawler():
 
 
 if __name__ == "__main__":
+    global index_num
+    args = sys.argv[1:]
+    if len(args) > 0:
+        index_num = int(args[0])
     ioloop.IOLoop.current().run_sync(start_crawler)
