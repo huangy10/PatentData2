@@ -23,7 +23,8 @@ def start_crawler():
     load_country_code()
     session = new_session()
     countries = session.query(Country).all()
-    url_maker = IndexURLMaker(countries=countries)
+    us = session.query(Country).filter_by(code="US").all()
+    url_maker = IndexURLMaker(countries=us + countries)
     futures = []
     httpclient.AsyncHTTPClient.configure(None, defaults=dict(max_client=100))
     logger.info(u"爬虫启动,创建%s个线程" % index_num)

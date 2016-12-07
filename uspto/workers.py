@@ -57,6 +57,8 @@ class IndexURLMaker(object):
 
         self.page = 1
         self.country_idx = -1
+        self.index_workers = []
+        self.caching_us = countries[0].code == "US"
         super(IndexURLMaker, self).__init__()
 
     def make_url(self, page, country):
@@ -83,6 +85,7 @@ class IndexURLMaker(object):
     def __iter__(self):
         return self
 
+    @gen.coroutine
     def next(self):
         if self.move_to_next_country:
             self.page = 1
@@ -93,7 +96,15 @@ class IndexURLMaker(object):
         if self.country_idx >= len(self.countries):
             raise StopIteration()
         country = self.countries[self.country_idx].code
-        return self.make_url(self.page, country), country, self.page
+        if country != "US" and self.caching_us:
+            logger.info(u"\n\nUS caching index tasks all dispatched, waiting detail workers to finish\n")
+            tasks = []
+            for w in self.index_workers:
+                tasks.append(w.queue.join())
+            yield tasks
+            logger.info(u"\nFinish Caching US Patent\n\n")
+            self.caching_us = False
+        raise gen.Return((self.make_url(self.page, country), country, self.page))
 
 
 class IndexWorker(Worker):
@@ -111,20 +122,30 @@ class IndexWorker(Worker):
 
         self.done = False
 
+        self.us = url_maker.countries[0]
+
         workers = []
         for i in range(20):
             worker = DetailWorker("%s" % i, self, session)
             workers.append(worker)
         self.workers = workers
 
+        self.url_maker.index_workers.append(self)
+
+    @property
+    def caching_us(self):
+        return self.url_maker.caching_us
+
     @gen.coroutine
     def go(self):
         logger.info(u"爬虫 %s 启动" % self.name)
+        if self.caching_us:
+            logger.info(u"%s begin caching us patents" % self.name)
         for w in self.workers:
             w.go()
         while True:
             # 控制一下
-            url, country, page = self.url_maker.next()
+            url, country, page = yield self.url_maker.next()
             if url is None:
                 break
             logger.info(u"===========%s - %s" % (self.name, url))
@@ -195,27 +216,34 @@ class DetailWorker(Worker):
                 yield gen.sleep(5)
                 continue
             parser = DetailParser(res.body, task.req.url)
-            try:
-                country_code = parser.get_country_code()
-            except Exception as e:
-                logger.error(u"%s Error when parsing country code: %s" % (self.name, task.req.url))
-                logger.error(u"%s Error Info: %s" % e)
-                raise e
-            try:
-                country = self.country_cache[country_code]
-            except KeyError:
-                logger.warning(u"%s drop detail from country: %s" % (self.name, country_code))
-                break
+            if not self.index_worker.caching_us:
+                try:
+                    country_code = parser.get_country_code()
+                except Exception as e:
+                    logger.error(u"%s Error when parsing country code: %s" % (self.name, task.req.url))
+                    logger.error(u"%s Error Info: %s" % e)
+                    raise e
+                try:
+                    country = self.country_cache[country_code]
+                except KeyError:
+                    logger.warning(u"%s drop detail from country: %s" % (self.name, country_code))
+                    break
+            else:
+                country = self.index_worker.us
             p_id = parser.get_patent_number()
             patent, created = self.get_or_create_patent(p_id)
-            parser.analyze()(patent)
-            patent.country = country
+            if created:
+                parser.analyze()(patent)
+                patent.country = country
             if task.patent is not None:
                 patent.cited_by.append(task.patent)
             if created:
                 self.session.add(patent)
             self.session.commit()
 
+            if self.index_worker.caching_us:
+                # 开始第一轮缓存美国的专利时,不进行引用检查
+                return
             link = parser.get_citation_link()
             if link is None:
                 break
