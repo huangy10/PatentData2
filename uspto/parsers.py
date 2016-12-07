@@ -56,18 +56,21 @@ class DetailParser(WebpageParser):
 
     def get_country_code(self):
         header = self.soup.find("th", string=re.compile(r"Applicant:\s*"))
-        # data = header.parent
-        # for pattern in self.country_code_patterns:
-        #     result = re.search(pattern, data.get_text())
-        #     if result is None:
-        #         continue
-        #     result = result.groups()
-        #     if len(result) > 0:
-        #         return result[0]
-        sub_table = header.find_next_sibling("td").find("table")
-        data_row = sub_table.find_all("tr")[1]
-        country_code = data_row.find_all("td")[3].get_text().split("\n")[0].strip()
-        return country_code
+        if header is None:
+            header = self.soup.find("th", string=re.compile(r"Assignee:\s*"))
+            data = header.parent
+            for pattern in self.country_code_patterns:
+                result = re.search(pattern, data.get_text())
+                if result is None:
+                    continue
+                result = result.groups()
+                if len(result) > 0:
+                    return result[0]
+        else:
+            sub_table = header.find_next_sibling("td").find("table")
+            data_row = sub_table.find_all("tr")[1]
+            country_code = data_row.find_all("td")[3].get_text().strip().split("\n")[0]
+            return country_code
 
     def get_apply_year(self):
         header = self.soup.find("th", string=re.compile(r"^Filed:\s*"))

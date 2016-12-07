@@ -198,7 +198,8 @@ class DetailWorker(Worker):
             try:
                 country_code = parser.get_country_code()
             except Exception as e:
-                logger.error(u"Error when parsing country code: %s" % task.req.url)
+                logger.error(u"%s Error when parsing country code: %s" % (self.name, task.req.url))
+                logger.error(u"%s Error Info: %s" % e)
                 raise e
             try:
                 country = self.country_cache[country_code]
@@ -237,6 +238,7 @@ class DetailWorker(Worker):
             links = parser.analyze()
             if len(links) == 0:
                 # try to get single document page
+                logger.info(u"%s find single document page at %s" % (self.name, task.req.url))
                 link = parser.single_link()
                 if link is not None:
                     link = self.pre_process_url(link)
