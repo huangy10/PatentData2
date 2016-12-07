@@ -1,4 +1,6 @@
 # coding=utf-8
+import logging
+
 from datetime import datetime, timedelta
 from tornado import gen, ioloop, httpclient, queues
 from urllib import urlencode
@@ -10,6 +12,8 @@ from parsers import DetailParser, IndexParser
 domain_name = "http://151.207.240.26"
 
 index_url_template = ""
+
+logger = logging.getLogger()
 
 
 class Task(object):
@@ -88,7 +92,8 @@ class IndexURLMaker(object):
             self.page += 1
         if self.country_idx >= len(self.countries):
             raise StopIteration()
-        return self.make_url(self.page, self.countries[self.country_idx].code)
+        country = self.countries[self.country_idx].code
+        return self.make_url(self.page, country), country, self.page
 
 
 class IndexWorker(Worker):
@@ -114,15 +119,16 @@ class IndexWorker(Worker):
 
     @gen.coroutine
     def go(self):
-        print u"爬虫 %s 启动" % self.name
+        logger.info(u"爬虫 %s 启动" % self.name)
         for w in self.workers:
             w.go()
         while True:
             # 控制一下
-            url = self.url_maker.next()
+            url, country, page = self.url_maker.next()
             if url is None:
                 break
-            print u"===========%s - %s" % (self.name, url)
+            logger.info(u"===========%s - %s" % (self.name, url))
+            logger.info(u"Working on country: %s, page: %s" % (country, page))
             req = httpclient.HTTPRequest(url, request_timeout=1000, connect_timeout=1000)
             count = yield self.fetch_url(req)
             self.url_maker.move_to_next_country = count < 50
@@ -133,7 +139,7 @@ class IndexWorker(Worker):
         while True:
             res = yield self.client.fetch(url, raise_error=False)
             if res.code != 200:
-                print u"===========%s - retry - %s" % (self.name, url.url)
+                logger.warning(u"===========%s - retry - %s" % (self.name, url.url))
                 yield gen.sleep(10)
                 continue
             parser = IndexParser(res.body, url)
@@ -167,12 +173,12 @@ class DetailWorker(Worker):
 
     @gen.coroutine
     def go(self):
-        print u"子爬虫 %s 启动" % self.name
+        logger.info(u"子爬虫 %s 启动" % self.name)
         while not self.index_worker.done or self.queue.qsize() > 0:
             task = yield self.queue.get()
             if task is None:
                 continue
-            print self.name, task
+            logger.info(u"%s %s", self.name, task)
             if task.task_type == "detail":
                 yield self.get_detail(task)
             elif task.task_type == "citation":
@@ -184,7 +190,7 @@ class DetailWorker(Worker):
         while True:
             res = yield self.client.fetch(task.req, raise_error=False)
             if res.code != 200:
-                print u"%s detail retry %s:%s" % (self.name, res.code, res.error)
+                logger.warning(u"%s detail retry %s:%s" % (self.name, res.code, res.error))
                 task.retries += 1
                 yield gen.sleep(5)
                 continue
@@ -192,12 +198,12 @@ class DetailWorker(Worker):
             try:
                 country_code = parser.get_country_code()
             except Exception as e:
-                print task.req.url
+                logger.error(u"Error when parsing country code: %s" % task.req.url)
                 raise e
             try:
                 country = self.country_cache[country_code]
             except KeyError:
-                print u"%s drop detail from country: %s" % (self.name, country_code)
+                logger.warning(u"%s drop detail from country: %s" % (self.name, country_code))
                 break
             p_id = parser.get_patent_number()
             patent, created = self.get_or_create_patent(p_id)
@@ -223,7 +229,7 @@ class DetailWorker(Worker):
         while True:
             res = yield self.client.fetch(task.req, raise_error=False)
             if res.code != 200:
-                print u"%s citation retry %s:%s" % (self.name, res.code, res.error)
+                logger.warning(u"%s citation retry %s:%s" % (self.name, res.code, res.error))
                 task.retries += 1
                 yield gen.sleep(5)
                 continue
@@ -239,7 +245,7 @@ class DetailWorker(Worker):
                     yield self.queue.put(new_task)
                 break
             else:
-                print u"%s find %s citation data" % (self.name, len(links))
+                logger.info(u"%s find %s citation data" % (self.name, len(links)))
             for link in links:
                 link = self.pre_process_url(link[2])
                 new_task = Task(httpclient.HTTPRequest(link, request_timeout=1000, connect_timeout=1000),
@@ -254,7 +260,7 @@ class DetailWorker(Worker):
                 self.pre_process_url(next_list), request_timeout=1000, connect_timeout=1000
             )
             task.retries = 0
-            print u"%s go to next citation page" % self.name
+            logger.info(u"%s go to next citation page" % self.name)
 
     def get_or_create_patent(self, p_id):
         session = self.session

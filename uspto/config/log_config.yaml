@@ -11,18 +11,25 @@ handlers:
         level: DEBUG
         formatter: default
         stream: ext://sys.stdout
+    debug:
+        class: logging.handlers.RotatingFileHandler
+        filename: uspto/logs/debug.log
+        maxBytes: 123289600
+        backupCount: 10
+        formatter: simple
+        level: DEBUG
     warning:
         class: logging.handlers.RotatingFileHandler
         filename: uspto/logs/warnings.log
         maxBytes: 123289600
-        backupCount: 10
+        backupCount: 5
         formatter: simple
         level: WARNING
     error:
         class: logging.handlers.RotatingFileHandler
         filename: uspto/logs/errors.log
         maxBytes: 123289600
-        backupCount: 10
+        backupCount: 5
         formatter: simple
         level: ERROR
 loggers:
