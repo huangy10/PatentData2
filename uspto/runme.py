@@ -15,6 +15,7 @@ from log import *
 
 
 index_num = 1
+skip = 0
 logger = logging.getLogger()
 
 
@@ -24,7 +25,7 @@ def start_crawler():
     session = new_session()
     countries = session.query(Country).all()
     us = session.query(Country).filter_by(code="US").all()
-    url_maker = IndexURLMaker(countries=us + countries)
+    url_maker = IndexURLMaker(countries=us + countries, skip=skip)
     futures = []
     httpclient.AsyncHTTPClient.configure(None, defaults=dict(max_client=100))
     logger.info(u"爬虫启动,创建%s个线程" % index_num)
@@ -37,9 +38,10 @@ def start_crawler():
 
 
 if __name__ == "__main__":
-    global index_num
     args = sys.argv[1:]
     if len(args) > 0:
         index_num = int(args[0])
+        if len(args > 1):
+            skip = int(args[1])
     ioloop.IOLoop.current().run_sync(start_crawler)
 

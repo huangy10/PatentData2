@@ -12,7 +12,7 @@ class IndexParser(WebpageParser):
         res = []
         for item in items:
             links = item.find_all("a")
-            if len(links) == 0:
+            if len(links) < 2:
                 continue
             no = links[0].get_text()
             title = links[1].string

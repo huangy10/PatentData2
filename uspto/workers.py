@@ -46,7 +46,7 @@ class Worker(object):
 
 class IndexURLMaker(object):
 
-    def __init__(self, countries):
+    def __init__(self, countries, skip):
         self.countries = countries
         self.is_empty = False
         cache = dict()
@@ -59,6 +59,8 @@ class IndexURLMaker(object):
         self.country_idx = -1
         self.index_workers = []
         self.caching_us = countries[0].code == "US"
+        if self.caching_us:
+            self.page = 1 + skip
         super(IndexURLMaker, self).__init__()
 
     def make_url(self, page, country):
@@ -164,7 +166,13 @@ class IndexWorker(Worker):
                 yield gen.sleep(10)
                 continue
             parser = IndexParser(res.body, url)
-            patents = parser.analyze()
+            try:
+                patents = parser.analyze()
+            except IndexError as e:
+                logger.warning(u"===========%s - retry because of IndexError - %s" % (self.name, url.url))
+                logger.warning(u"===========%s: %s" % (self.name, e.message))
+                yield gen.sleep(10)
+                continue
             for p in patents:
                 new_task = Task(
                     httpclient.HTTPRequest(self.pre_process_url(p[2]),
@@ -230,11 +238,17 @@ class DetailWorker(Worker):
                     break
             else:
                 country = self.index_worker.us
-            p_id = parser.get_patent_number()
-            patent, created = self.get_or_create_patent(p_id)
-            if created:
-                parser.analyze()(patent)
-                patent.country = country
+            try:
+                p_id = parser.get_patent_number()
+                patent, created = self.get_or_create_patent(p_id)
+                if created:
+                    parser.analyze()(patent)
+                    patent.country = country
+            except KeyError as e:
+                logger.warning(u"%s Error when parsing" % self.name)
+                logger.warning(u"%s: %s" % (self.name, e.message))
+                yield gen.sleep(10)
+                continue
             if task.patent is not None:
                 patent.cited_by.append(task.patent)
             if created:
@@ -263,7 +277,12 @@ class DetailWorker(Worker):
                 yield gen.sleep(5)
                 continue
             parser = IndexParser(res.body, task.req.url)
-            links = parser.analyze()
+            try:
+                links = parser.analyze()
+            except IndexError as e:
+                logger.warning(u"%s citation retry: %s" % (self.name, e.message))
+                yield gen.sleep(10)
+                continue
             if len(links) == 0:
                 # try to get single document page
                 logger.info(u"%s find single document page at %s" % (self.name, task.req.url))
