@@ -69,10 +69,10 @@ class FullIndexWorker(Worker):
         self.session = session
         super(FullIndexWorker, self).__init__()
 
-        self.queue = queues.Queue(maxsize=1000)
+        self.queue = queues.Queue()
         self.client = httpclient.AsyncHTTPClient()
         workers = []
-        for i in range(50):
+        for i in range(1):
             worker = FullDetailWorker("%s" % i, self, session)
             workers.append(worker)
         self.workers = workers
@@ -119,6 +119,9 @@ class FullIndexWorker(Worker):
 
             for p in patents:
                 new_task = Task(make_req(p[2]), "detail", None)
+                if self.queue.qsize() > 1000:
+                    logger.info(u"===========%s: queue too long(%s), wait for 1 min" % (self.name, self.queue.qsize()))
+                    yield gen.sleep(60)
                 yield self.queue.put(new_task)
             raise gen.Return(len(patents))
 
