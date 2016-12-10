@@ -8,29 +8,24 @@ sys.path.extend([proj_dir])
 
 from tornado import ioloop, gen
 
-from Patent.load_country_code import load_country_code
-from Patent.models import *
-from workers import IndexWorker, IndexURLMaker
-from log import *
+from workers import FullIndexURLMaker, FullIndexWorker
+from models import new_session
+from uspto.log import *
 
 
 index_num = 1
-skip = 0
 logger = logging.getLogger()
 
 
 @gen.coroutine
 def start_crawler():
-    load_country_code()
     session = new_session()
-    countries = session.query(Country).all()
-    us = session.query(Country).filter_by(code="US").all()
-    url_maker = IndexURLMaker(countries=us + countries, skip=skip)
+    url_maker = FullIndexURLMaker()
     futures = []
     httpclient.AsyncHTTPClient.configure(None, defaults=dict(max_client=100))
     logger.info(u"爬虫启动,创建%s个线程" % index_num)
     for i in range(index_num):
-        worker = IndexWorker(name="default-%s" % i, url_maker=url_maker, session=session)
+        worker = FullIndexWorker(name="default-%s" % i, url_maker=url_maker, session=session)
         futures.append(worker.go())
     # yield gen.sleep(10000)
     yield futures
@@ -41,7 +36,4 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     if len(args) > 0:
         index_num = int(args[0])
-        if len(args) > 1:
-            skip = int(args[1])
     ioloop.IOLoop.current().run_sync(start_crawler)
-

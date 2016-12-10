@@ -90,7 +90,8 @@ class IndexURLMaker(object):
     @gen.coroutine
     def next(self):
         if self.move_to_next_country:
-            self.page = 1
+            if not self.caching_us:
+                self.page = 1
             self.move_to_next_country = False
             self.country_idx += 1
         else:
@@ -151,7 +152,7 @@ class IndexWorker(Worker):
             if url is None:
                 break
             logger.info(u"===========%s - %s" % (self.name, url))
-            logger.info(u"Working on country: %s, page: %s" % (country, page))
+            logger.info(u"Working on country: %s, page: %s, with queue size: %s" % (country, page, self.queue.qsize()))
             req = httpclient.HTTPRequest(url, request_timeout=1000, connect_timeout=1000)
             count = yield self.fetch_url(req)
             self.url_maker.move_to_next_country = count < 50
@@ -309,7 +310,7 @@ class DetailWorker(Worker):
                 self.pre_process_url(next_list), request_timeout=1000, connect_timeout=1000
             )
             task.retries = 0
-            logger.info(u"%s go to next citation page" % self.name)
+            logger.info(u"%s go to next citation page %s" % (self.name, next_list))
 
     def get_or_create_patent(self, p_id):
         session = self.session
