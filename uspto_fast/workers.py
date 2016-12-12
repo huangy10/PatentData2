@@ -73,7 +73,7 @@ class FullIndexWorker(Worker):
         self.queue = queues.Queue()
         self.client = httpclient.AsyncHTTPClient()
         workers = []
-        for i in range(5):
+        for i in range(8):
             worker = FullDetailWorker("%s" % i, self, session)
             workers.append(worker)
         self.workers = workers
@@ -129,7 +129,7 @@ class FullIndexWorker(Worker):
                     logger.info(u"===========%s: queue too long, wait for 1 min" % self.name)
                     logger.info(u"Working on page: %s year: %s, with queue size: %s"
                         % (self.page, self.year, self.queue.qsize()))
-                    yield gen.sleep(300)
+                    yield gen.sleep(60)
                 yield self.queue.put(new_task)
             raise gen.Return(len(patents))
 
@@ -160,6 +160,7 @@ class FullDetailWorker(DetailWorker):
                         parser.analyze()(patent)
                         patent.assignee = parser.get_country_full()
                         patent.country_code = parser.get_country_code()
+                        patent.reference_link = parser.get_citation_link()
                         if patent.country_code is None:
                             logger.warning(u"%s cant find country code" % self.name)
                 except KeyError as e:
@@ -174,15 +175,15 @@ class FullDetailWorker(DetailWorker):
                 if created:
                     self.session.add(patent)
                 self.session.commit()
-                if task.patent is not None:
-                    print "drop"
-                    break
-                link = parser.get_citation_link()
-                if link is None:
-                    break
-                new_task = Task(make_req(link),
-                                "citation", patent)
-                yield self.queue.put(new_task)
+                # if task.patent is not None:
+                #     break
+                # link = parser.get_citation_link()
+                # if link is None:
+                #     break
+                # new_task = Task(make_req(link),
+                #                 "citation", patent)
+                # yield self.queue.put(new_task)
+                # break
                 break
             logger.info(u"%s Leave While Zone" % self.name)
         except Exception as e:

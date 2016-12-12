@@ -61,6 +61,8 @@ class Patent(Base):
     # valid, applying, invalid
     status = Column(String(10))
 
+    reference_link = Column(String(500))
+
     #
     flag = Column(Boolean, default=True)
 
