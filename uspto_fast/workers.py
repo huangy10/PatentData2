@@ -27,7 +27,7 @@ class FullIndexURLMaker(object):
     def __init__(self, year):
         self.year = year
         self.is_empty = False
-        self.move_to_next_year = True
+        self.move_to_next_year = False
         self.page = 1
         self.workers = []
 
