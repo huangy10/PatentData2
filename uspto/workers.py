@@ -270,51 +270,60 @@ class DetailWorker(Worker):
 
     @gen.coroutine
     def get_citations(self, task):
-        while True:
-            res = yield self.client.fetch(task.req, raise_error=False)
-            if res.code != 200:
-                logger.warning(u"%s citation retry %s:%s" % (self.name, res.code, res.error))
-                task.retries += 1
-                yield gen.sleep(5)
-                continue
-            parser = IndexParser(res.body, task.req.url)
-            try:
-                links = parser.analyze()
-            except IndexError as e:
-                logger.warning(u"%s citation retry: %s" % (self.name, e.message))
-                yield gen.sleep(10)
-                continue
-            if len(links) == 0:
-                # try to get single document page
-                logger.info(u"%s find single document page at %s" % (self.name, task.req.url))
-                link = parser.single_link()
-                if link is not None:
-                    link = self.pre_process_url(link)
+        try:
+            while True:
+                logger.info(u"%s Enter While Zone" % self.name)
+                res = yield self.client.fetch(task.req, raise_error=False)
+                if res.code != 200:
+                    # logger.warning(u"%s citation retry %s:%s" % (self.name, res.code, res.error))
+                    task.retries += 1
+                    yield gen.sleep(5)
+                    continue
+                parser = IndexParser(res.body, task.req.url)
+                try:
+                    links = parser.analyze()
+                except IndexError as e:
+                    # logger.info(u"%s citation retry: %s" % (self.name, e.message))
+                    yield gen.sleep(10)
+                    continue
+                if len(links) == 0:
+                    # try to get single document page
+                    logger.info(u"%s find single document page at %s" % (self.name, task.req.url))
+                    link = parser.single_link()
+                    if link is not None:
+                        link = self.pre_process_url(link)
+                        new_task = Task(httpclient.HTTPRequest(link, request_timeout=1000, connect_timeout=1000),
+                                        "detail", task.patent)
+                        yield self.queue.put(new_task)
+                    break
+                else:
+                    logger.info(u"%s find %s citation data" % (self.name, len(links)))
+                for link in links:
+                    link = self.pre_process_url(link[2])
                     new_task = Task(httpclient.HTTPRequest(link, request_timeout=1000, connect_timeout=1000),
                                     "detail", task.patent)
                     yield self.queue.put(new_task)
-                break
-            else:
-                logger.info(u"%s find %s citation data" % (self.name, len(links)))
-            for link in links:
-                link = self.pre_process_url(link[2])
-                new_task = Task(httpclient.HTTPRequest(link, request_timeout=1000, connect_timeout=1000),
-                                "detail", task.patent)
-                yield self.queue.put(new_task)
 
-            # try to get link of next page
-            next_list = parser.get_next_page_link()
-            if next_list is None:
-                break
-            task.req = httpclient.HTTPRequest(
-                self.pre_process_url(next_list), request_timeout=1000, connect_timeout=1000
-            )
-            task.retries = 0
-            logger.info(u"%s go to next citation page %s" % (self.name, next_list))
+                # try to get link of next page
+                next_list = parser.get_next_page_link()
+                if next_list is None:
+                    break
+                task.req = httpclient.HTTPRequest(
+                    self.pre_process_url(next_list), request_timeout=1000, connect_timeout=1000
+                )
+                task.retries = 0
+                logger.info(u"%s go to next citation page %s" % (self.name, next_list))
+            logger.info(u"%s Leave While Zone" % self.name)
+        except Exception as e:
+            logger.error(u"%s citation- %s" % (self.name, e))
+            logger.error(u"%s at task: %s" % (self.name, task.req.url))
+            raise e
 
     def get_or_create_patent(self, p_id):
         session = self.session
+        logger.info(u"%s begin query")
         res = session.query(Patent).filter_by(p_id=p_id).first()
+        logger.info(u"%s finish query")
         if res is not None:
             return res, False
         else:

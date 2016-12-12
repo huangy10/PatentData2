@@ -35,9 +35,9 @@ handlers:
 loggers:
     default:
         level: DEBUG
-        handlers: [error, warning, console]
+        handlers: [error, warning, debug, console]
         propagate: no
 root:
     level: DEBUG
-    handlers: [error, warning, console]
+    handlers: [error, warning, debug, console]
     propagate: yes

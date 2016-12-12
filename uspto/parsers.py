@@ -58,6 +58,8 @@ class DetailParser(WebpageParser):
         header = self.soup.find("th", string=re.compile(r"Applicant:\s*"))
         if header is None:
             header = self.soup.find("th", string=re.compile(r"Assignee:\s*"))
+            if header is None:
+                return None
             data = header.parent
             for pattern in self.country_code_patterns:
                 result = re.search(pattern, data.get_text())

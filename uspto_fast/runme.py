@@ -17,8 +17,15 @@ index_num = 1
 logger = logging.getLogger()
 
 
+def test_logger():
+    logger.debug(u"test debug log")
+    logger.warning(u"test warning log")
+    logger.error(u"test error log")
+
+
 @gen.coroutine
 def start_crawler():
+    test_logger()
     session = new_session()
     url_maker = FullIndexURLMaker()
     futures = []

@@ -72,13 +72,16 @@ class FullIndexWorker(Worker):
         self.queue = queues.Queue()
         self.client = httpclient.AsyncHTTPClient()
         workers = []
-        for i in range(1):
+        for i in range(5):
             worker = FullDetailWorker("%s" % i, self, session)
             workers.append(worker)
         self.workers = workers
 
         self.url_maker.workers.append(self)
         self.done = False
+
+        self.page = 0
+        self.year = 2000
 
     @gen.coroutine
     def go(self):
@@ -92,6 +95,8 @@ class FullIndexWorker(Worker):
                 break
             logger.info(u"==========%s - %s" % (self.name, url))
             logger.info(u"Working on page: %s year: %s, with queue size: %s" % (page, year, self.queue.qsize()))
+            self.page = page
+            self.year = year
             req = make_req(url)
             count = yield self.fetch_search_result(req)
             self.url_maker.move_to_next_year = count < 50
@@ -119,9 +124,11 @@ class FullIndexWorker(Worker):
 
             for p in patents:
                 new_task = Task(make_req(p[2]), "detail", None)
-                if self.queue.qsize() > 1000:
-                    logger.info(u"===========%s: queue too long(%s), wait for 1 min" % (self.name, self.queue.qsize()))
-                    yield gen.sleep(60)
+                while self.queue.qsize() > 100:
+                    logger.info(u"===========%s: queue too long, wait for 1 min" % self.name)
+                    logger.info(u"Working on page: %s year: %s, with queue size: %s"
+                        % (self.page, self.year, self.queue.qsize()))
+                    yield gen.sleep(300)
                 yield self.queue.put(new_task)
             raise gen.Return(len(patents))
 
@@ -134,41 +141,53 @@ class FullDetailWorker(DetailWorker):
 
     @gen.coroutine
     def get_detail(self, task):
-        while True:
-            res = yield self.client.fetch(task.req, raise_error=False)
-            if res.code != 200:
-                logger.warning(u"%s detail retry %s:%s" % (self.name, res.code, res.error))
-                task.retries += 1
-                yield gen.sleep(5)
-                continue
-            parser = FullDetailParser(res.body, task.req.url)
-            try:
-                p_id = parser.get_patent_number()
-                patent, created = self.get_or_create_patent(p_id)
+        try:
+            while True:
+                logger.info(u"%s Enter While Zone" % self.name)
+                res = yield self.client.fetch(task.req, raise_error=False)
+                if res.code != 200:
+                    logger.warning(u"%s detail retry %s:%s" % (self.name, res.code, res.error))
+                    task.retries += 1
+                    yield gen.sleep(5)
+                    continue
+                logger.info(u"%s response got" % self.name)
+                parser = FullDetailParser(res.body, task.req.url)
+                try:
+                    p_id = parser.get_patent_number()
+                    patent, created = self.get_or_create_patent(p_id)
+                    if created:
+                        parser.analyze()(patent)
+                        patent.assignee = parser.get_country_full()
+                        patent.country_code = parser.get_country_code()
+                        if patent.country_code is None:
+                            logger.warning(u"%s cant find country code" % self.name)
+                except KeyError as e:
+                    self.session.rollback()
+                    logger.warning(u"%s Error when parsing" % self.name)
+                    logger.warning(u"%s: %s" % (self.name, e.message))
+                    yield gen.sleep(5)
+                    continue
+                    # raise e
+                if task.patent is not None:
+                    patent.cited_by.append(task.patent)
                 if created:
-                    parser.analyze()(patent)
-                    patent.assignee = parser.get_country_full()
-                    patent.country_code = parser.get_country_code()
-            except KeyError as e:
-                print e
-                logger.warning(u"%s Error when parsing" % self.name)
-                logger.warning(u"%s: %s" % (self.name, e.message))
-                yield gen.sleep(10)
-                continue
-            if task.patent is not None:
-                patent.cited_by.append(task.patent)
-            if created:
-                self.session.add(patent)
-            self.session.commit()
-            if task.patent is not None:
+                    self.session.add(patent)
+                self.session.commit()
+                if task.patent is not None:
+                    print "drop"
+                    break
+                link = parser.get_citation_link()
+                if link is None:
+                    break
+                new_task = Task(make_req(link),
+                                "citation", patent)
+                yield self.queue.put(new_task)
                 break
-            link = parser.get_citation_link()
-            if link is None:
-                break
-            new_task = Task(make_req(link),
-                            "citation", patent)
-            yield self.queue.put(new_task)
-            break
+            logger.info(u"%s Leave While Zone" % self.name)
+        except Exception as e:
+            logger.error(u"%s detail- %s" % (self.name, e))
+            logger.error(u"%s at task: %s" % (self.name, task.req.url))
+            raise e
 
     def get_or_create_patent(self, p_id):
         session = self.session
