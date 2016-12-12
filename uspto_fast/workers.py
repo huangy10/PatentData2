@@ -1,4 +1,5 @@
 import logging
+import traceback
 
 from datetime import datetime
 from urllib import urlencode
@@ -185,7 +186,7 @@ class FullDetailWorker(DetailWorker):
                 break
             logger.info(u"%s Leave While Zone" % self.name)
         except Exception as e:
-            logger.error(u"%s detail- %s" % (self.name, e))
+            logger.error(u"%s detail- %s" % (self.name, traceback.print_exc()))
             logger.error(u"%s at task: %s" % (self.name, task.req.url))
             raise e
 

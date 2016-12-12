@@ -1,5 +1,6 @@
 # coding=utf-8
 import logging
+import traceback
 
 from datetime import datetime, timedelta
 from tornado import gen, ioloop, httpclient, queues
@@ -315,7 +316,7 @@ class DetailWorker(Worker):
                 logger.info(u"%s go to next citation page %s" % (self.name, next_list))
             logger.info(u"%s Leave While Zone" % self.name)
         except Exception as e:
-            logger.error(u"%s citation- %s" % (self.name, e))
+            logger.error(u"%s citation- %s" % (self.name, traceback.format_exc()))
             logger.error(u"%s at task: %s" % (self.name, task.req.url))
             raise e
 
