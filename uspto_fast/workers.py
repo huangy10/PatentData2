@@ -24,8 +24,8 @@ def make_req(url):
 
 class FullIndexURLMaker(object):
 
-    def __init__(self):
-        self.year = 2000
+    def __init__(self, year):
+        self.year = year
         self.is_empty = False
         self.move_to_next_year = True
         self.page = 1
@@ -51,14 +51,13 @@ class FullIndexURLMaker(object):
 
     def next(self):
         if self.move_to_next_year:
-            self.year += 1
-            self.move_to_next_year = False
-            self.page = 1
+            self.is_empty = True
+            return None, self.page, self.year
         else:
             self.page += 1
-        if self.year > 2014:
-            logger.info(u"\n\nFinish Task Dispatch, Waiting for remaining tasks in queue\n\n")
-            return None, self.page, self.year
+        # if self.year > 2014:
+        #     logger.info(u"\n\nFinish Task Dispatch, Waiting for remaining tasks in queue\n\n")
+        #     return None, self.page, self.year
         return self.make_url(self.page, self.year), self.page, self.year
 
 
@@ -73,7 +72,7 @@ class FullIndexWorker(Worker):
         self.queue = queues.Queue()
         self.client = httpclient.AsyncHTTPClient()
         workers = []
-        for i in range(8):
+        for i in range(5):
             worker = FullDetailWorker("%s" % i, self, session)
             workers.append(worker)
         self.workers = workers
