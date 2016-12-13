@@ -16,6 +16,7 @@ from uspto.log import *
 index_num = 1
 logger = logging.getLogger()
 year = 2001
+skip = 0
 
 
 def test_logger():
@@ -29,7 +30,7 @@ def start_crawler():
     test_logger()
     session = new_session()
     logger.info(u"爬取%s年的专利" % year)
-    url_maker = FullIndexURLMaker(year)
+    url_maker = FullIndexURLMaker(year, skip)
     futures = []
     httpclient.AsyncHTTPClient.configure(None, defaults=dict(max_client=100))
     logger.info(u"爬虫启动,创建%s个线程" % index_num)
@@ -47,4 +48,6 @@ if __name__ == "__main__":
         index_num = int(args[0])
         if len(args) > 1:
             year = int(args[1])
+    if len(args) > 2:
+        skip = int(args[2])
     ioloop.IOLoop.current().run_sync(start_crawler)

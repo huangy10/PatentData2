@@ -24,11 +24,11 @@ def make_req(url):
 
 class FullIndexURLMaker(object):
 
-    def __init__(self, year):
+    def __init__(self, year, skip=0):
         self.year = year
         self.is_empty = False
         self.move_to_next_year = False
-        self.page = 1
+        self.page = 1 + skip
         self.workers = []
 
     def make_url(self, page, year):
