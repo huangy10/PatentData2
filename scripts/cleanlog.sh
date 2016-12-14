@@ -6,6 +6,8 @@ cd ..
 BASE_DIR=$(pwd)
 LOG_DIR=${BASE_DIR}/uspto/logs
 rm ${LOG_DIR}/*.log
-rm ${BASE_DIR}/nohup.out
+if [ -d ${BASE_DIR}/nohup.out ]; then
+    rm ${BASE_DIR}/nohup.out
+fi
 
 echo "Done!"
