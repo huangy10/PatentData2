@@ -317,8 +317,10 @@ class DetailWorker(Worker):
             logger.info(u"%s Leave While Zone" % self.name)
         except Exception as e:
             logger.error(u"%s citation- %s" % (self.name, traceback.format_exc()))
+            logger.error(u"%s error info: %s" % (self.name, e))
             logger.error(u"%s at task: %s" % (self.name, task.req.url))
-            raise e
+            # raise e
+            yield self.queue.put(task)
 
     def get_or_create_patent(self, p_id):
         session = self.session
