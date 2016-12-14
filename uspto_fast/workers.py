@@ -72,7 +72,7 @@ class FullIndexWorker(Worker):
         self.queue = queues.Queue()
         self.client = httpclient.AsyncHTTPClient()
         workers = []
-        for i in range(5):
+        for i in range(10):
             worker = FullDetailWorker("%s" % i, self, session)
             workers.append(worker)
         self.workers = workers
