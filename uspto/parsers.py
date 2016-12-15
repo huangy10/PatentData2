@@ -68,9 +68,13 @@ class DetailParser(WebpageParser):
                 result = result.groups()
                 if len(result) > 0:
                     return result[0]
+            return None
         else:
             sub_table = header.find_next_sibling("td").find("table")
-            data_row = sub_table.find_all("tr")[1]
+            rows = sub_table.find_all("tr")
+            if len(rows) < 2:
+                return None
+            data_row = rows[1]
             country_code = data_row.find_all("td")[3].get_text().strip().split("\n")[0]
             return country_code
 
@@ -89,7 +93,10 @@ class DetailParser(WebpageParser):
         return a["href"]
 
     def get_patent_number(self):
-        table = self.soup.find_all("table")[2]
+        tables = self.soup.find_all("table")
+        if len(tables) < 3:
+            return None
+        table = tables[2]
         return table.find_all("td")[1].get_text().strip()
 
 
