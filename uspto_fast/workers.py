@@ -154,6 +154,10 @@ class FullDetailWorker(DetailWorker):
                 parser = FullDetailParser(res.body, task.req.url)
                 try:
                     p_id = parser.get_patent_number()
+                    if p_id is None:
+                        logger.warning(u"%s PID None, retry!" % self.name)
+                        yield gen.sleep(5)
+                        continue
                     patent, created = self.get_or_create_patent(p_id)
                     if created:
                         parser.analyze()(patent)
