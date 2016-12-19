@@ -1,5 +1,7 @@
-# 关于PatentData2 #github
+# 关于PatentData2 #github#
 ## 介绍
+2016.12.19 Updates:
+取消了原来master中的全面查询十四年内所有专利数据的版本，将原single_year分支的单年份爬取功能合并到master了。
 
 这个工程是基于 [PatentData](https://github.com/huangy10)的改进版。其作用是爬取并分析来自专利相关搜索引擎的专利数据，并分析这些数据之间的关联。目前这个工程主要涉及了[soopat](www.soopat.com)以及 [USPTO](https://www.uspto.gov)这两个搜索引擎。然而，由于soopat这个网站限制了每个账户每天最多能够获取的专利数量的限制（大约在每天3000条），故实际上工程主要面向的还是USPTO这个搜索引擎，即主要是`uspto`和`uspto_fast`两个包内的内容。
 
