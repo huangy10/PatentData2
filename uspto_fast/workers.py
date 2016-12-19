@@ -24,11 +24,11 @@ def make_req(url):
 
 class FullIndexURLMaker(object):
 
-    def __init__(self):
-        self.year = 2000
+    def __init__(self, year, skip=0):
+        self.year = year
         self.is_empty = False
-        self.move_to_next_year = True
-        self.page = 1
+        self.move_to_next_year = False
+        self.page = 1 + skip
         self.workers = []
 
     def make_url(self, page, year):
@@ -51,14 +51,13 @@ class FullIndexURLMaker(object):
 
     def next(self):
         if self.move_to_next_year:
-            self.year += 1
-            self.move_to_next_year = False
-            self.page = 1
+            self.is_empty = True
+            return None, self.page, self.year
         else:
             self.page += 1
-        if self.year > 2014:
-            logger.info(u"\n\nFinish Task Dispatch, Waiting for remaining tasks in queue\n\n")
-            return None, self.page, self.year
+        # if self.year > 2014:
+        #     logger.info(u"\n\nFinish Task Dispatch, Waiting for remaining tasks in queue\n\n")
+        #     return None, self.page, self.year
         return self.make_url(self.page, self.year), self.page, self.year
 
 
@@ -73,7 +72,7 @@ class FullIndexWorker(Worker):
         self.queue = queues.Queue()
         self.client = httpclient.AsyncHTTPClient()
         workers = []
-        for i in range(8):
+        for i in range(10):
             worker = FullDetailWorker("%s" % i, self, session)
             workers.append(worker)
         self.workers = workers
@@ -155,6 +154,10 @@ class FullDetailWorker(DetailWorker):
                 parser = FullDetailParser(res.body, task.req.url)
                 try:
                     p_id = parser.get_patent_number()
+                    if p_id is None:
+                        logger.warning(u"%s PID None, retry!" % self.name)
+                        yield gen.sleep(5)
+                        continue
                     patent, created = self.get_or_create_patent(p_id)
                     if created:
                         parser.analyze()(patent)
@@ -188,8 +191,10 @@ class FullDetailWorker(DetailWorker):
             logger.info(u"%s Leave While Zone" % self.name)
         except Exception as e:
             logger.error(u"%s detail- %s" % (self.name, traceback.print_exc()))
+            logger.error(u"%s error info: %s" % (self.name, e))
             logger.error(u"%s at task: %s" % (self.name, task.req.url))
-            raise e
+            # raise e
+            yield self.queue.put(task)
 
     def get_or_create_patent(self, p_id):
         session = self.session
