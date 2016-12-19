@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd "$( dirname "${BASE_SOURCE[0]}")"
+cd "$( dirname "${BASH_SOURCE[0]}")"
 cd ..
 
 if [ $# -lt 1 ]; then
