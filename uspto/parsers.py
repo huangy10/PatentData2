@@ -36,6 +36,31 @@ class IndexParser(WebpageParser):
         else:
             return btn.parent["href"]
 
+    def get_home_page_link(self):
+        btn = self.soup.find("img", alt="[Home]")
+        if btn is None:
+            return None
+        else:
+            return btn.parent["href"]
+
+    def is_valid(self):
+        """
+        Tell if this page is a valid index page or not
+        :return:
+        """
+        return self.get_home_page_link() is not None
+
+    def is_last_page(self):
+        """
+        Tell if we have reach the end of list
+        :return:
+        """
+        if not self.is_valid():
+            return False
+        next_page_link = self.get_next_page_link()
+        return next_page_link is None
+
+
 
 class DetailParser(WebpageParser):
 

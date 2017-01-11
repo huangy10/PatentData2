@@ -98,8 +98,13 @@ class FullIndexWorker(Worker):
             self.page = page
             self.year = year
             req = make_req(url)
-            count = yield self.fetch_search_result(req)
-            self.url_maker.move_to_next_year = count < 50
+            while True:
+                count, is_last_page = yield self.fetch_search_result(req)
+                if not is_last_page and count == 0:
+                    logger.warning(u"Index Warning: meet invalid index page at %s" % req.url)
+                    continue
+                self.url_maker.move_to_next_year = is_last_page
+                break
 
         self.done = True
         yield self.queue.join()
@@ -130,7 +135,8 @@ class FullIndexWorker(Worker):
                         % (self.page, self.year, self.queue.qsize()))
                     yield gen.sleep(60)
                 yield self.queue.put(new_task)
-            raise gen.Return(len(patents))
+
+            raise gen.Return((len(patents), parser.is_last_page()))
 
 
 class FullDetailWorker(DetailWorker):
